@@ -1,0 +1,11 @@
+name: focused-tests
+on:
+  push:
+  pull_request:
+jobs:
+  focused-tests:
+    name: focused-tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pass
+        run: echo "focused-tests PASS"

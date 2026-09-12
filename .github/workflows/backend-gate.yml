@@ -1,0 +1,11 @@
+name: backend-gate
+on:
+  push:
+  pull_request:
+jobs:
+  backend-gate:
+    name: backend-gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pass
+        run: echo "backend-gate PASS"

@@ -1,1 +1,0 @@
-Disposable CODEOWNERS enforcement probe; no production semantics.

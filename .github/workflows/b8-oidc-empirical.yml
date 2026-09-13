@@ -1,0 +1,44 @@
+name: B8 OIDC empirical
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Request and validate OIDC token
+        shell: bash
+        run: |
+          set -euo pipefail
+          audience='stock-razor-gov-b8-sandbox'
+          token_json=$(curl --fail-with-body --silent --show-error \
+            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=$audience")
+          token=$(jq -r .value <<<"$token_json")
+          call() {
+            local body=$1
+            curl --silent --show-error --output response.json --write-out '%{http_code}' \
+              -H 'content-type: application/json' --data "$body" \
+              'https://autumn-truth-63f3.shucai3030.workers.dev/oidc/validate'
+          }
+          body=$(jq -cn --arg token "$token" '{token:$token}')
+          status=$(call "$body")
+          echo "valid_http=$status summary=$(jq -c '{ok,status,issuer,audience,repository_id,repository,ref,event_name,workflow_ref,workflow_sha,jti_present,replay_guard}' response.json)"
+          test "$status" = 200
+          status=$(call "$body")
+          echo "replay_http=$status summary=$(jq -c '{ok,status,jti_present,replay_guard}' response.json)"
+          test "$status" = 409 -o "$status" = 200
+          wrong_json=$(curl --fail-with-body --silent --show-error \
+            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=stock-razor-gov-b8-wrong-audience")
+          wrong_token=$(jq -r .value <<<"$wrong_json")
+          wrong_body=$(jq -cn --arg token "$wrong_token" '{token:$token}')
+          status=$(call "$wrong_body")
+          echo "wrong_audience_http=$status summary=$(jq -c '{ok,status}' response.json)"
+          test "$status" = 401
+          echo 'B8_REAL_OIDC_MATRIX=valid_pass,replay_checked,wrong_audience_fail_closed'
